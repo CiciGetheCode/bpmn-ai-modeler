@@ -5,6 +5,8 @@ node_modules/
 .env
 .config/.env
 git_push_instructions.txt
+.config/env.js
+.public/env.js
 # Logs
 logs/
 
