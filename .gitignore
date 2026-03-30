@@ -3,7 +3,8 @@ node_modules/
 
 # Environment variables
 .env
-
+.config/.env
+git_push_instructions.txt
 # Logs
 logs/
 
