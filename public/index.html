@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BPMN Modeler + VSDX Inspector + Langflow Chat</title>
+
+  <!-- bpmn-js styles -->
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@18.13.1/dist/assets/diagram-js.css" />
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@18.13.1/dist/assets/bpmn-js.css" />
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@18.13.1/dist/assets/bpmn-font/css/bpmn.css" />
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; }
+    body { background: #f5f7fb; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      height: 100vh;
+      gap: 0;
+    }
+
+    .editor-panel {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      border-right: 1px solid #d8dee9;
+      background: #fff;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      padding: 12px;
+      border-bottom: 1px solid #e5e9f0;
+      background: #fff;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .toolbar button, .toolbar input[type="file"] {
+      font: inherit;
+    }
+
+    .toolbar button {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .toolbar button:hover {
+      background: #f8fafc;
+    }
+
+    .toolbar .secondary {
+      background: #f8fafc;
+    }
+
+    .workspace {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+    }
+
+    #canvas,
+    #vsdxViewer {
+      position: absolute;
+      inset: 0;
+    }
+
+    #canvas {
+      display: block;
+    }
+
+    #vsdxViewer {
+      display: none;
+      overflow: auto;
+      background: #fff;
+      padding: 20px;
+    }
+
+    .vsdx-card {
+      max-width: 960px;
+      margin: 0 auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+
+    .vsdx-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    .vsdx-header h3 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+
+    .vsdx-header p {
+      margin: 0;
+      color: #475569;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .vsdx-body {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .panel {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .panel h4 {
+      margin: 0;
+      padding: 14px 16px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 15px;
+    }
+
+    .panel-content {
+      padding: 14px 16px;
+    }
+
+    .page-list, .file-list {
+      margin: 0;
+      padding-left: 18px;
+      color: #334155;
+    }
+
+    .page-list li, .file-list li {
+      margin: 6px 0;
+      line-height: 1.45;
+    }
+
+    .hint {
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    code.inline {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .chat-panel {
+      background: #f8fafc;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .chat-panel h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .chat-panel p {
+      margin: 0;
+      color: #475569;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .chat-card {
+      flex: 1;
+      min-height: 0;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .status {
+      padding: 0 12px 12px;
+      font-size: 13px;
+      color: #64748b;
+      min-height: 18px;
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 520px;
+      }
+
+      .editor-panel {
+        border-right: none;
+        border-bottom: 1px solid #d8dee9;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="editor-panel">
+      <div class="toolbar">
+        <button id="newDiagramBtn">New Diagram</button>
+        <button id="openBpmnBtn">Open BPMN</button>
+        <button id="openVisioBtn" class="secondary">Open Visio</button>
+        <button id="saveBtn">Download BPMN</button>
+
+        <input id="bpmnInput" type="file" accept=".bpmn,.xml" hidden />
+        <input id="visioInput" type="file" accept=".vsdx" hidden />
+      </div>
+
+      <div class="workspace">
+        <div id="canvas"></div>
+
+        <div id="vsdxViewer">
+          <div class="vsdx-card">
+            <div class="vsdx-header">
+              <h3>Visio file inspector</h3>
+              <p>
+                This uses <span class="inline-wrapper"><code class="inline">vsdx-js</code></span> to inspect the uploaded
+                <span class="inline-wrapper"><code class="inline">.vsdx</code></span> package in the browser.
+                It does not fully render the Visio drawing yet, but it gives you a useful first step:
+                package contents, metadata, and discovered pages.
+              </p>
+            </div>
+            <div class="vsdx-body" id="vsdxContent"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="chat-panel">
+      <h2>Your Personal AI Assistant</h2>
+      <p>Ρώτησε ότι θέλεις ενώ δημιουργείς το διάγραμμα BPMN</p>
+      <div class="chat-card">
+        <langflow-chat
+          window_title="Document Q&A"
+          flow_id="4537ce3d-6844-4707-8f72-3a502f784d22"
+          host_url="https://bpmnaiagenthelper.politemoss-c1da2b8d.westeurope.azurecontainerapps.io"
+          api_key="sk-0ISNyYlqRQ5owz3M6NoamMqvsL1CIJxMPKHuIz37ZiU"
+          width="360"
+          height="480"
+          start_open="true"
+          chat_position="right"
+        ></langflow-chat>
+      </div>
+      <div class="status" id="status">Ready</div>
+    </aside>
+  </div>
+
+  <script src="https://unpkg.com/bpmn-js@18.13.1/dist/bpmn-modeler.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/logspace-ai/langflow-embedded-chat@v1.0.7/dist/build/static/js/bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/fast-xml-parser@4.5.0/dist/fxp.min.js"></script> -->
+
+  <script>
+    const initialDiagram = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  id="Definitions_1"
+  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_1" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_1" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="173" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>`;
+
+    const modeler = new BpmnJS({
+      container: '#canvas'
+    });
+
+    const canvasEl = document.getElementById('canvas');
+    const vsdxViewerEl = document.getElementById('vsdxViewer');
+    const vsdxContentEl = document.getElementById('vsdxContent');
+    const statusEl = document.getElementById('status');
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function showBpmnView() {
+      canvasEl.style.display = 'block';
+      vsdxViewerEl.style.display = 'none';
+    }
+
+    function showVsdxView() {
+      canvasEl.style.display = 'none';
+      vsdxViewerEl.style.display = 'block';
+    }
+
+    async function loadDiagram(xml) {
+      try {
+        showBpmnView();
+        await modeler.importXML(xml);
+        const canvas = modeler.get('canvas');
+        canvas.zoom('fit-viewport');
+        setStatus('BPMN diagram loaded');
+      } catch (err) {
+        console.error('Failed to import BPMN diagram', err);
+        setStatus('Failed to load BPMN diagram');
+        alert('Could not load BPMN diagram. Check the XML format.');
+      }
+    }
+
+    async function downloadDiagram() {
+      try {
+        const result = await modeler.saveXML({ format: true });
+        const blob = new Blob([result.xml], { type: 'application/xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'diagram.bpmn';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setStatus('BPMN exported');
+      } catch (err) {
+        console.error('Failed to save BPMN diagram', err);
+        setStatus('Could not export BPMN');
+        alert('Could not export the BPMN file.');
+      }
+    }
+
+    // function parseXml(text) {
+    //   const parser = new XMLParser({
+    //     ignoreAttributes: false,
+    //     attributeNamePrefix: '@_',
+    //     removeNSPrefix: false,
+    //     parseTagValue: false,
+    //     trimValues: true
+    //   });
+    //   return parser.parse(text);
+    // }
+    function parseXml(text) {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, 'application/xml');
+
+      const errorNode = xml.querySelector('parsererror');
+      if (errorNode) {
+        throw new Error('Invalid XML in VSDX package');
+      }
+
+      return xml;
+    }
+    function toArray(value) {
+      if (!value) return [];
+      return Array.isArray(value) ? value : [value];
+    }
+
+    // function getPageNames(pageDoc) {
+    //   const pages =
+    //     pageDoc?.['VisioDocument']?.['Pages']?.['Page'] ||
+    //     pageDoc?.['Pages']?.['Page'] ||
+    //     [];
+
+    //   return toArray(pages).map((page, index) => ({
+    //     index: index + 1,
+    //     id: page?.['@_ID'] || page?.['@_ID'] || `page-${index + 1}`,
+    //     name: page?.['@_Name'] || page?.['@_NameU'] || `Page ${index + 1}`,
+    //     background: page?.['@_Background'] || '0'
+    //   }));
+    // }
+    function getPageNames(pageDoc) {
+      const allElements = Array.from(pageDoc.getElementsByTagName('*'));
+      const pageElements = allElements.filter((el) => el.localName === 'Page');
+
+      return pageElements.map((page, index) => ({
+        index: index + 1,
+        id: page.getAttribute('ID') || `page-${index + 1}`,
+        name: page.getAttribute('Name') || page.getAttribute('NameU') || `Page ${index + 1}`,
+        background: page.getAttribute('Background') || '0'
+      }));
+    }
+    // function renderVsdxSummary(summary) {
+    //   const pagesHtml = summary.pages.length
+    //     ? `<ol class="page-list">${summary.pages.map(page => `
+    //         <li>
+    //           <strong>${escapeHtml(page.name)}</strong>
+    //           <div class="hint">ID: ${escapeHtml(String(page.id))} · Background: ${escapeHtml(String(page.background))}</div>
+    //         </li>
+    //       `).join('')}</ol>`
+    //     : '<p class="hint">No pages were detected from the Visio package metadata.</p>';
+
+    //   const filesHtml = summary.sampleFiles.length
+    //     ? `<ol class="file-list">${summary.sampleFiles.map(file => `<li><code class="inline">${escapeHtml(file)}</code></li>`).join('')}</ol>`
+    //     : '<p class="hint">No internal package files found.</p>';
+
+    //   vsdxContentEl.innerHTML = `
+    //     <div class="stats">
+    //       <div class="stat">
+    //         <div class="stat-label">File</div>
+    //         <div class="stat-value" style="font-size:16px; line-height:1.35;">${escapeHtml(summary.fileName)}</div>
+    //       </div>
+    //       <div class="stat">
+    //         <div class="stat-label">Package files</div>
+    //         <div class="stat-value">${summary.fileCount}</div>
+    //       </div>
+    //       <div class="stat">
+    //         <div class="stat-label">Pages found</div>
+    //         <div class="stat-value">${summary.pages.length}</div>
+    //       </div>
+    //       <div class="stat">
+    //         <div class="stat-label">Type</div>
+    //         <div class="stat-value" style="font-size:16px;">VSDX package</div>
+    //       </div>
+    //     </div>
+
+    //     <div class="panel">
+    //       <h4>Detected pages</h4>
+    //       <div class="panel-content">${pagesHtml}</div>
+    //     </div>
+
+    //     <div class="panel">
+    //       <h4>Sample files inside the VSDX package</h4>
+    //       <div class="panel-content">${filesHtml}</div>
+    //     </div>
+
+    //     <div class="panel">
+    //       <h4>Next step</h4>
+    //       <div class="panel-content">
+    //         <p class="hint">
+    //           This is the inspection stage. To turn this into a real Visio viewer, the next step is to read the Visio page XML,
+    //           shapes, masters, and geometry, then draw them into SVG or canvas. For now you can upload and inspect a
+    //           <code class="inline">.vsdx</code> without breaking the BPMN workflow.
+    //         </p>
+    //       </div>
+    //     </div>
+    //   `;
+    // }
+      function getCellValue(parentEl, name) {
+  const cell = Array.from(parentEl.children).find(
+    (child) => child.localName === 'Cell' && child.getAttribute('N') === name
+  );
+  if (!cell) return null;
+
+  const value = cell.getAttribute('V');
+  const number = Number(value);
+  return Number.isFinite(number) ? number : value;
+}
+
+function getTextValue(shapeEl) {
+  const textEl = Array.from(shapeEl.children).find(
+    (child) => child.localName === 'Text'
+  );
+  if (!textEl) return '';
+  return (textEl.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+// function extractTopLevelShapes(pageDoc) {
+//   const shapesContainer = Array.from(pageDoc.getElementsByTagName('*')).find(
+//     (el) => el.localName === 'Shapes'
+//   );
+
+//   if (!shapesContainer) return [];
+
+//   return Array.from(shapesContainer.children)
+//     .filter((child) => child.localName === 'Shape')
+//     .map((shapeEl, index) => {
+//       const pinX = Number(getCellValue(shapeEl, 'PinX')) || 0;
+//       const pinY = Number(getCellValue(shapeEl, 'PinY')) || 0;
+//       const width = Number(getCellValue(shapeEl, 'Width')) || 1;
+//       const height = Number(getCellValue(shapeEl, 'Height')) || 0.6;
+//       const angle = Number(getCellValue(shapeEl, 'Angle')) || 0;
+//       const text = getTextValue(shapeEl);
+//       const beginX = Number(getCellValue(shapeEl, 'BeginX'));
+//       const beginY = Number(getCellValue(shapeEl, 'BeginY'));
+//       const endX = Number(getCellValue(shapeEl, 'EndX'));
+//       const endY = Number(getCellValue(shapeEl, 'EndY'));
+      
+//       const isConnector =
+//         Number.isFinite(beginX) &&
+//         Number.isFinite(beginY) &&
+//         Number.isFinite(endX) &&
+//         Number.isFinite(endY);
+
+//       return {
+//         id: shapeEl.getAttribute('ID') || `${index + 1}`,
+//         name: shapeEl.getAttribute('Name') || shapeEl.getAttribute('NameU') || 'Shape',
+//         label: text,
+//         pinX,
+//         pinY,
+//         width,
+//         height,
+//         angle,
+//         isConnector,
+//         beginX,
+//         beginY,
+//         endX,
+//         endY
+//       };
+//     })
+    
+    
+//     .filter(shape => {
+//         // remove tiny / useless shapes
+//         if (shape.width < 0.2 || shape.height < 0.2) return false;
+
+//         // remove shapes with no text AND generic names
+//         if (!shape.label && shape.name === 'Shape') return false;
+
+//         return true;
+//       });
+//     }
+
+function getDirectChildElements(parentEl, localName) {
+  return Array.from(parentEl.children).filter((child) => child.localName === localName);
+}
+
+function getDirectChildElement(parentEl, localName) {
+  return Array.from(parentEl.children).find((child) => child.localName === localName) || null;
+}
+
+function getRowCellValue(rowEl, cellName) {
+  const cell = getDirectChildElements(rowEl, 'Cell').find(
+    (child) => child.getAttribute('N') === cellName
+  );
+  if (!cell) return null;
+
+  const raw = cell.getAttribute('V');
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : raw;
+}
+
+function extractGeometryPoints(shapeEl) {
+  const sections = getDirectChildElements(shapeEl, 'Section').filter(
+    (section) => section.getAttribute('N') === 'Geometry'
+  );
+
+  const allPoints = [];
+
+  for (const section of sections) {
+    const rows = getDirectChildElements(section, 'Row');
+    const sectionPoints = [];
+
+    for (const row of rows) {
+      const rowType = row.getAttribute('T') || row.getAttribute('N') || '';
+
+      const x = getRowCellValue(row, 'X');
+      const y = getRowCellValue(row, 'Y');
+
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+
+      sectionPoints.push({
+        type: rowType,
+        x,
+        y
+      });
+    }
+
+    if (sectionPoints.length) {
+      allPoints.push(...sectionPoints);
+    }
+  }
+
+  return allPoints;
+}
+
+// function extractTopLevelShapes(pageDoc) {
+//   const shapesContainer = Array.from(pageDoc.getElementsByTagName('*')).find(
+//     (el) => el.localName === 'Shapes'
+//   );
+
+//   if (!shapesContainer) return [];
+
+//   return Array.from(shapesContainer.children)
+//     .filter((child) => child.localName === 'Shape')
+//     .map((shapeEl, index) => {
+//       const pinX = Number(getCellValue(shapeEl, 'PinX')) || 0;
+//       const pinY = Number(getCellValue(shapeEl, 'PinY')) || 0;
+//       const width = Number(getCellValue(shapeEl, 'Width')) || 1;
+//       const height = Number(getCellValue(shapeEl, 'Height')) || 0.6;
+//       const angle = Number(getCellValue(shapeEl, 'Angle')) || 0;
+//       const text = getTextValue(shapeEl);
+
+//       const rawBeginX = getCellValue(shapeEl, 'BeginX');
+//       const rawBeginY = getCellValue(shapeEl, 'BeginY');
+//       const rawEndX = getCellValue(shapeEl, 'EndX');
+//       const rawEndY = getCellValue(shapeEl, 'EndY');
+
+//       const beginX = rawBeginX == null ? null : Number(rawBeginX);
+//       const beginY = rawBeginY == null ? null : Number(rawBeginY);
+//       const endX = rawEndX == null ? null : Number(rawEndX);
+//       const endY = rawEndY == null ? null : Number(rawEndY);
+
+//       const isConnector =
+//         beginX !== null &&
+//         beginY !== null &&
+//         endX !== null &&
+//         endY !== null &&
+//         Number.isFinite(beginX) &&
+//         Number.isFinite(beginY) &&
+//         Number.isFinite(endX) &&
+//         Number.isFinite(endY) &&
+//         !(beginX === endX && beginY === endY);
+
+//       return {
+//         id: shapeEl.getAttribute('ID') || `${index + 1}`,
+//         name: shapeEl.getAttribute('Name') || shapeEl.getAttribute('NameU') || 'Shape',
+//         label: text,
+//         pinX,
+//         pinY,
+//         width,
+//         height,
+//         angle,
+//         isConnector,
+//         beginX,
+//         beginY,
+//         endX,
+//         endY
+//       };
+//     })
+//     .filter((shape) => {
+//       if (shape.isConnector) return true;
+
+//       if (shape.width < 0.2 || shape.height < 0.2) return false;
+//       if (!shape.label && shape.name === 'Shape') return false;
+
+//       return true;
+//     });
+// }
+
+function extractTopLevelShapes(pageDoc) {
+  const rootShapesContainer = Array.from(pageDoc.getElementsByTagName('*')).find(
+    (el) => el.localName === 'Shapes'
+  );
+
+  if (!rootShapesContainer) return [];
+
+  const results = [];
+
+  function walkShapesContainer(shapesContainer) {
+    const shapeElements = Array.from(shapesContainer.children).filter(
+      (child) => child.localName === 'Shape'
+    );
+
+    for (const shapeEl of shapeElements) {
+      const pinX = Number(getCellValue(shapeEl, 'PinX')) || 0;
+      const pinY = Number(getCellValue(shapeEl, 'PinY')) || 0;
+      const width = Number(getCellValue(shapeEl, 'Width')) || 1;
+      const height = Number(getCellValue(shapeEl, 'Height')) || 0.6;
+      const angle = Number(getCellValue(shapeEl, 'Angle')) || 0;
+      const text = getTextValue(shapeEl);
+
+      const rawBeginX = getCellValue(shapeEl, 'BeginX');
+      const rawBeginY = getCellValue(shapeEl, 'BeginY');
+      const rawEndX = getCellValue(shapeEl, 'EndX');
+      const rawEndY = getCellValue(shapeEl, 'EndY');
+
+      const beginX = rawBeginX == null ? null : Number(rawBeginX);
+      const beginY = rawBeginY == null ? null : Number(rawBeginY);
+      const endX = rawEndX == null ? null : Number(rawEndX);
+      const endY = rawEndY == null ? null : Number(rawEndY);
+
+      const geometryPoints = extractGeometryPoints(shapeEl);
+
+      const isConnector =
+        beginX !== null &&
+        beginY !== null &&
+        endX !== null &&
+        endY !== null &&
+        Number.isFinite(beginX) &&
+        Number.isFinite(beginY) &&
+        Number.isFinite(endX) &&
+        Number.isFinite(endY);
+
+      const shape = {
+        id: shapeEl.getAttribute('ID') || '',
+        name: shapeEl.getAttribute('Name') || shapeEl.getAttribute('NameU') || 'Shape',
+        label: text,
+        pinX,
+        pinY,
+        width,
+        height,
+        angle,
+        isConnector,
+        beginX,
+        beginY,
+        endX,
+        endY,
+        geometryPoints
+      };
+
+      const keepShape = (() => {
+        if (shape.isConnector) {
+          return (
+            Number.isFinite(shape.beginX) &&
+            Number.isFinite(shape.beginY) &&
+            Number.isFinite(shape.endX) &&
+            Number.isFinite(shape.endY)
+          );
+        }
+
+        if (shape.width < 0.15 || shape.height < 0.15) return false;
+        if (!shape.label && shape.name === 'Shape') return false;
+
+        return true;
+      })();
+
+      if (keepShape) {
+        results.push(shape);
+      }
+
+      const nestedShapesContainer = Array.from(shapeEl.children).find(
+        (child) => child.localName === 'Shapes'
+      );
+
+      if (nestedShapesContainer) {
+        walkShapesContainer(nestedShapesContainer);
+      }
+    }
+  }
+
+  walkShapesContainer(rootShapesContainer);
+  return results;
+}
+
+function buildConnectorPath(conn, mapX, mapY) {
+  const start = {
+    x: mapX(conn.beginX),
+    y: mapY(conn.beginY)
+  };
+
+  const end = {
+    x: mapX(conn.endX),
+    y: mapY(conn.endY)
+  };
+
+  const points = [start];
+
+  if (Array.isArray(conn.geometryPoints) && conn.geometryPoints.length) {
+    for (const pt of conn.geometryPoints) {
+      // points.push({
+      //   x: mapX(pt.x),
+      //   y: mapY(pt.y)
+      // });
+      const globalX = conn.pinX + pt.x - conn.width / 2;
+      const globalY = conn.pinY + pt.y - conn.height / 2;
+
+      points.push({
+        x: mapX(globalX),
+        y: mapY(globalY)
+      });
+    }
+  }
+
+  points.push(end);
+
+  if (points.length < 2) return '';
+
+  let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+
+  for (let i = 1; i < points.length; i++) {
+    d += ` L ${points[i].x.toFixed(2)} ${points[i].y.toFixed(2)}`;
+  }
+
+  return d;
+}
+function getPageSize(pageDoc, shapes) {
+  const pageSheet = Array.from(pageDoc.getElementsByTagName('*')).find(
+    (el) => el.localName === 'PageSheet'
+  );
+
+  let pageWidth = 0;
+  let pageHeight = 0;
+
+  if (pageSheet) {
+    pageWidth = Number(getCellValue(pageSheet, 'PageWidth')) || 0;
+    pageHeight = Number(getCellValue(pageSheet, 'PageHeight')) || 0;
+  }
+
+  if (!pageWidth || !pageHeight) {
+    const maxX = Math.max(8.5, ...shapes.map((shape) => shape.pinX + shape.width / 2));
+    const maxY = Math.max(11, ...shapes.map((shape) => shape.pinY + shape.height / 2));
+    pageWidth = maxX + 0.5;
+    pageHeight = maxY + 0.5;
+  }
+
+  return { pageWidth, pageHeight };
+}
+
+function buildPagePreview(pageDoc, pageName) {
+  const shapes = extractTopLevelShapes(pageDoc);
+  const normalShapes = shapes.filter((shape) => !shape.isConnector);
+  const { pageWidth, pageHeight } = getPageSize(pageDoc, shapes);
+
+  const scale = 90;
+  const svgWidth = Math.max(500, pageWidth * scale);
+  const svgHeight = Math.max(320, pageHeight * scale);
+  const connectors = shapes.filter(s => s.isConnector);
+
+  shapes.sort((a, b) => {
+    // draw large shapes first (background)
+    const areaA = a.width * a.height;
+    const areaB = b.width * b.height;
+    return areaB - areaA;
+  });
+  // const shapeSvg = shapes.map((shape) => {
+  //   const x = (shape.pinX - shape.width / 2) * scale;
+  //   const y = svgHeight - ((shape.pinY + shape.height / 2) * scale);
+  //   const w = shape.width * scale;
+  //   const h = shape.height * scale;
+  //   const cx = x + w / 2;
+  //   const cy = y + h / 2;
+  //   const label = escapeHtml(
+  //     shape.label && shape.label.length < 100
+  //       ? shape.label
+  //       : ''
+  //   );
+  //   const rotate = shape.angle
+  //     ? ` transform="rotate(${(-shape.angle * 180) / Math.PI} ${cx} ${cy})"`
+  //     : '';
+
+  //   return `
+  //     <g${rotate}>
+  //       <rect
+  //         x="${x.toFixed(2)}"
+  //         y="${y.toFixed(2)}"
+  //         width="${w.toFixed(2)}"
+  //         height="${h.toFixed(2)}"
+  //         rx="8"
+  //         ry="8"
+  //         fill="#ffffff"
+  //         stroke="#334155"
+  //         stroke-width="1.5"
+  //       ></rect>
+  //       <text
+  //         x="${cx.toFixed(2)}"
+  //         y="${(cy + 5).toFixed(2)}"
+  //         dominant-baseline="middle"
+  //         text-anchor="middle"
+  //         font-size="12"
+  //         font-family="Arial, sans-serif"
+  //         fill="#0f172a"
+  //       >${label}</text>
+  //     </g>
+  //   `;
+  // }).join('');
+  const padding = 40;
+  const shapeBounds = normalShapes.map((shape) => ({
+    minX: shape.pinX - shape.width / 2,
+    maxX: shape.pinX + shape.width / 2,
+    minY: shape.pinY - shape.height / 2,
+    maxY: shape.pinY + shape.height / 2
+  }));
+  // const connectorBounds = connectors.map((conn) => ({
+  //   minX: Math.min(conn.beginX, conn.endX),
+  //   maxX: Math.max(conn.beginX, conn.endX),
+  //   minY: Math.min(conn.beginY, conn.endY),
+  //   maxY: Math.max(conn.beginY, conn.endY)
+  // }));
+  
+  const connectorBounds = connectors.flatMap((conn) => {
+  const pts = [];
+
+  if (Number.isFinite(conn.beginX) && Number.isFinite(conn.beginY)) {
+    pts.push({ x: conn.beginX, y: conn.beginY });
+  }
+
+  if (Array.isArray(conn.geometryPoints)) {
+    for (const pt of conn.geometryPoints) {
+      if (Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
+        pts.push({ x: pt.x, y: pt.y });
+      }
+    }
+  }
+
+  if (Number.isFinite(conn.endX) && Number.isFinite(conn.endY)) {
+    pts.push({ x: conn.endX, y: conn.endY });
+  }
+
+  if (!pts.length) return [];
+
+  return [{
+    minX: Math.min(...pts.map((p) => p.x)),
+    maxX: Math.max(...pts.map((p) => p.x)),
+    minY: Math.min(...pts.map((p) => p.y)),
+    maxY: Math.max(...pts.map((p) => p.y))
+  }];
+});
+  const allBounds = [...shapeBounds, ...connectorBounds];
+  const minX = Math.min(...allBounds.map((b) => b.minX));
+  const maxX = Math.max(...allBounds.map((b) => b.maxX));
+  const minY = Math.min(...allBounds.map((b) => b.minY));
+  const maxY = Math.max(...allBounds.map((b) => b.maxY));
+  const contentWidth = Math.max(1, maxX - minX);
+  const contentHeight = Math.max(1, maxY - minY);
+  function mapX(x) {
+    return padding + (x - minX) * scale;
+  }
+  function mapY(y) {
+    return padding + (maxY - y) * scale;
+  }
+
+  // const connectorSvg = connectors.map((conn) => {
+  //   const x1 = mapX(conn.beginX);
+  //   const y1 = mapY(conn.beginY);
+  //   const x2 = mapX(conn.endX);
+  //   const y2 = mapY(conn.endY);
+
+  //   return `
+  //     <line
+  //       x1="${x1.toFixed(2)}"
+  //       y1="${y1.toFixed(2)}"
+  //       x2="${x2.toFixed(2)}"
+  //       y2="${y2.toFixed(2)}"
+  //       stroke="#334155"
+  //       stroke-width="2"
+  //       marker-end="url(#arrow)"
+  //     />
+  //   `;
+  // }).join('');
+  
+  const connectorSvg = connectors.map((conn) => {
+  const pathD = buildConnectorPath(conn, mapX, mapY);
+
+    if (!pathD) return '';
+
+    return `
+      <path
+        d="${pathD}"
+        fill="none"
+        stroke="#334155"
+        stroke-width="2"
+        marker-end="url(#arrow)"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+      />
+    `;
+  }).join('');
+  const shapeSvg = shapes.map((shape) => {
+    const x = (shape.pinX - shape.width / 2) * scale;
+    const y = svgHeight - ((shape.pinY + shape.height / 2) * scale);
+    const w = shape.width * scale;
+    const h = shape.height * scale;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+
+    const isContainer = shape.width > 6 || shape.height > 6;
+    const cleanText = (shape.label || '').trim();
+
+    const label = escapeHtml(
+      cleanText.length > 2 && cleanText.length < 80
+        ? cleanText
+        : ''
+    );
+
+    const rotate = shape.angle
+      ? ` transform="rotate(${(-shape.angle * 180) / Math.PI} ${cx} ${cy})"`
+      : '';
+
+  //   return `
+  //     <g${rotate}>
+  //       <rect
+  //         x="${x.toFixed(2)}"
+  //         y="${y.toFixed(2)}"
+  //         width="${w.toFixed(2)}"
+  //         height="${h.toFixed(2)}"
+  //         rx="8"
+  //         ry="8"
+  //         fill="${isContainer ? '#f1f5f9' : '#ffffff'}"
+  //         stroke="${isContainer ? '#0f172a' : '#334155'}"
+  //         stroke-width="${isContainer ? '2' : '1.5'}"
+  //       ></rect>
+  //       <text
+  //       x="${cx.toFixed(2)}"
+  //       y="${(cy + 4).toFixed(2)}"
+  //       text-anchor="middle"
+  //       dominant-baseline="middle"
+  //       font-size="12"
+  //       font-family="Arial, sans-serif"
+  //       fill="#0f172a"
+  //     >
+  //       ${label.length > 30 ? label.substring(0, 30) + '…' : label}
+  //     </text>
+  //     </g>
+  //   `;
+  // }).join('');
+  
+  // const svg = `
+  //   <svg
+  //     xmlns="http://www.w3.org/2000/svg"
+  //     width="${svgWidth}"
+  //     height="${svgHeight}"
+  //     viewBox="0 0 ${svgWidth} ${svgHeight}"
+  //     role="img"
+  //     aria-label="Visio page preview"
+  //   >
+  //   <defs>
+  //       <marker
+  //         id="arrow"
+  //         markerWidth="10"
+  //         markerHeight="10"
+  //         refX="8"
+  //         refY="3"
+  //         orient="auto"
+  //       >
+  //         <path d="M0,0 L0,6 L9,3 z" fill="#334155" />
+  //       </marker>
+  //     </defs>
+  //     <rect x="0" y="0" width="${svgWidth}" height="${svgHeight}" fill="#ffffff"></rect>
+  //     <rect
+  //       x="1"
+  //       y="1"
+  //       width="${svgWidth - 2}"
+  //       height="${svgHeight - 2}"
+  //       fill="none"
+  //       stroke="#cbd5e1"
+  //       stroke-width="2"
+  //     ></rect>
+  //     ${shapeSvg}
+  //     ${connectorSvg}
+  //   </svg>
+  // `;
+  return `
+    <g${rotate}>
+      <rect
+        x="${x.toFixed(2)}"
+        y="${y.toFixed(2)}"
+        width="${w.toFixed(2)}"
+        height="${h.toFixed(2)}"
+        rx="8"
+        ry="8"
+        fill="${isContainer ? '#f1f5f9' : '#ffffff'}"
+        stroke="${isContainer ? '#0f172a' : '#334155'}"
+        stroke-width="${isContainer ? '2' : '1.5'}"
+      ></rect>
+      <text
+        x="${cx.toFixed(2)}"
+        y="${cy.toFixed(2)}"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        font-size="12"
+        font-family="Arial, sans-serif"
+        fill="#0f172a"
+      >
+        ${label.length > 30 ? label.substring(0, 30) + '…' : label}
+      </text>
+    </g>
+  `;
+}).join('');
+  const svg = `
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="${svgWidth}"
+    height="${svgHeight}"
+    viewBox="0 0 ${svgWidth} ${svgHeight}"
+    role="img"
+    aria-label="Visio page preview"
+  >
+    <defs>
+      <marker
+        id="arrow"
+        markerWidth="10"
+        markerHeight="10"
+        refX="8"
+        refY="3"
+        orient="auto"
+      >
+        <path d="M0,0 L0,6 L9,3 z" fill="#334155" />
+      </marker>
+    </defs>
+
+    <rect x="0" y="0" width="${svgWidth}" height="${svgHeight}" fill="#ffffff"></rect>
+    <rect
+      x="1"
+      y="1"
+      width="${svgWidth - 2}"
+      height="${svgHeight - 2}"
+      fill="none"
+      stroke="#cbd5e1"
+      stroke-width="2"
+    ></rect>
+
+    ${shapeSvg}
+    ${connectorSvg}
+  </svg>
+`;
+  return {
+    name: pageName,
+    shapes,
+    svg
+  };
+}
+    
+function renderVsdxSummary(summary) {
+      const pagesHtml = summary.pages.length
+        ? `<ol class="page-list">${summary.pages.map(page => `
+            <li>
+              <strong>${escapeHtml(page.name)}</strong>
+              <div class="hint">ID: ${escapeHtml(String(page.id))} · Background: ${escapeHtml(String(page.background))}</div>
+            </li>
+          `).join('')}</ol>`
+        : '<p class="hint">No pages were detected from the Visio package metadata.</p>';
+
+      const filesHtml = summary.sampleFiles.length
+        ? `<ol class="file-list">${summary.sampleFiles.map(file => `<li><code class="inline">${escapeHtml(file)}</code></li>`).join('')}</ol>`
+        : '<p class="hint">No internal package files found.</p>';
+
+      const shapeRowsHtml = summary.preview && summary.preview.shapes.length
+        ? `<ol class="page-list">${summary.preview.shapes.slice(0, 25).map(shape => `
+            <li>
+              <strong>${escapeHtml(shape.label || shape.name || `Shape ${shape.id}`)}</strong>
+              <div class="hint">
+                Type: ${escapeHtml(shape.name || 'Unknown')} ·
+                X: ${shape.pinX.toFixed(2)} ·
+                Y: ${shape.pinY.toFixed(2)} ·
+                W: ${shape.width.toFixed(2)} ·
+                H: ${shape.height.toFixed(2)}
+              </div>
+            </li>
+          `).join('')}</ol>`
+        : '<p class="hint">No drawable top-level shapes were found in the first page.</p>';
+
+      const previewHtml = summary.preview
+        ? `
+          <div class="panel">
+            <h4>Page preview: ${escapeHtml(summary.preview.name)}</h4>
+            <div class="panel-content">
+              <div style="border:1px solid #e2e8f0; border-radius:12px; overflow:auto; background:#f8fafc; padding:12px;">
+                ${summary.preview.svg}
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h4>Detected top-level shapes</h4>
+            <div class="panel-content">${shapeRowsHtml}</div>
+          </div>
+        `
+        : '';
+
+      vsdxContentEl.innerHTML = `
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">File</div>
+            <div class="stat-value" style="font-size:16px; line-height:1.35;">${escapeHtml(summary.fileName)}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Package files</div>
+            <div class="stat-value">${summary.fileCount}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Pages found</div>
+            <div class="stat-value">${summary.pages.length}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Type</div>
+            <div class="stat-value" style="font-size:16px;">VSDX package</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h4>Detected pages</h4>
+          <div class="panel-content">${pagesHtml}</div>
+        </div>
+
+        ${previewHtml}
+
+        <div class="panel">
+          <h4>Sample files inside the VSDX package</h4>
+          <div class="panel-content">${filesHtml}</div>
+        </div>
+
+        <div class="panel">
+          <h4>Next step</h4>
+          <div class="panel-content">
+            <p class="hint">
+              This is now a lightweight visual preview. It reads the first Visio page XML and draws rough shape bounds into SVG.
+              More advanced rendering would map masters, connectors, geometry sections, fills, lines, and text formatting.
+            </p>
+          </div>
+        </div>
+      `;
+    }
+  function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+  async function loadVisio(file) {
+      try {
+        setStatus(`Reading ${file.name}...`);
+        showVsdxView();
+
+        const arrayBuffer = await file.arrayBuffer();
+
+        const signature = new Uint8Array(arrayBuffer.slice(0, 2));
+        if (signature[0] !== 0x50 || signature[1] !== 0x4B) {
+          throw new Error('The selected file is not a ZIP-based VSDX package.');
+        }
+
+        const zip = await JSZip.loadAsync(arrayBuffer);
+        const fileNames = Object.keys(zip.files).sort();
+
+        const pagesFile = zip.file('visio/pages/pages.xml');
+        let pages = [];
+
+        if (pagesFile) {
+          const pagesXml = await pagesFile.async('text');
+          const pagesDoc = parseXml(pagesXml);
+          pages = getPageNames(pagesDoc);
+        }
+
+        let preview = null;
+        const firstPageFile = zip.file('visio/pages/page1.xml');
+
+        if (firstPageFile) {
+          const pageXml = await firstPageFile.async('text');
+          const pageDoc = parseXml(pageXml);
+          preview = buildPagePreview(pageDoc, pages[0]?.name || 'Page 1');
+        }
+
+        renderVsdxSummary({
+          fileName: file.name,
+          fileCount: fileNames.length,
+          pages,
+          preview,
+          sampleFiles: fileNames.slice(0, 25)
+        });
+
+        setStatus(`Visio package loaded: ${file.name}`);
+      } catch (err) {
+        console.error('VSDX load error:', err);
+        setStatus('Failed to open Visio file');
+
+        vsdxContentEl.innerHTML = `
+          <div class="panel">
+            <h4>Could not read the VSDX file</h4>
+            <div class="panel-content">
+              <p class="hint">${escapeHtml(err?.message || 'Unknown error while reading the file.')}</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+    // async function loadVisio(file) {
+    //   try {
+    //     setStatus(`Reading ${file.name}...`);
+    //     showVsdxView();
+
+    //     const arrayBuffer = await file.arrayBuffer();
+
+    //     const signature = new Uint8Array(arrayBuffer.slice(0, 2));
+    //     if (signature[0] !== 0x50 || signature[1] !== 0x4B) {
+    //       throw new Error('The selected file is not a ZIP-based VSDX package.');
+    //     }
+
+    //     const zip = await JSZip.loadAsync(arrayBuffer);
+    //     const fileNames = Object.keys(zip.files).sort();
+
+    //     const pagesFile = zip.file('visio/pages/pages.xml');
+    //     let pages = [];
+
+    //     if (pagesFile) {
+    //       const pagesXml = await pagesFile.async('text');
+    //       const pagesDoc = parseXml(pagesXml);
+    //       pages = getPageNames(pagesDoc);
+    //     }
+
+    //     renderVsdxSummary({
+    //       fileName: file.name,
+    //       fileCount: fileNames.length,
+    //       pages,
+    //       sampleFiles: fileNames.slice(0, 25)
+    //     });
+
+    //     setStatus(`Visio package loaded: ${file.name}`);
+    //   } catch (err) {
+    //     console.error('VSDX load error:', err);
+    //     setStatus('Failed to open Visio file');
+
+    //     vsdxContentEl.innerHTML = `
+    //       <div class="panel">
+    //         <h4>Could not read the VSDX file</h4>
+    //         <div class="panel-content">
+    //           <p class="hint">${escapeHtml(err?.message || 'Unknown error while reading the file.')}</p>
+    //         </div>
+    //       </div>
+    //     `;
+    //   }
+    // }
+    // // async function loadVisio(file) {
+    // //   try {
+    //     setStatus(`Reading ${file.name}...`);
+    //     showVsdxView();
+
+    //     const arrayBuffer = await file.arrayBuffer();
+    //     const zip = await JSZip.loadAsync(arrayBuffer);
+    //     const fileNames = Object.keys(zip.files).sort();
+
+    //     const pagesFile = zip.file('visio/pages/pages.xml');
+    //     let pages = [];
+
+    //     if (pagesFile) {
+    //       const pagesXml = await pagesFile.async('text');
+    //       const pagesDoc = parseXml(pagesXml);
+    //       pages = getPageNames(pagesDoc);
+    //     }
+
+    //     renderVsdxSummary({
+    //       fileName: file.name,
+    //       fileCount: fileNames.length,
+    //       pages,
+    //       sampleFiles: fileNames.slice(0, 25)
+    //     });
+
+    //     setStatus(`Visio package loaded: ${file.name}`);
+    //   } catch (err) {
+    //     console.error('Failed to inspect VSDX file', err);
+    //     setStatus('Failed to open Visio file');
+    //     vsdxContentEl.innerHTML = `
+    //       <div class="panel">
+    //         <h4>Could not read the VSDX file</h4>
+    //         <div class="panel-content">
+    //           <p class="hint">
+    //             The file could not be opened as a valid <code class="inline">.vsdx</code> package.
+    //             Make sure the file is not corrupted and really is a Visio document.
+    //           </p>
+    //         </div>
+    //       </div>
+    //     `;
+    //   }
+    // }
+    
+
+    document.getElementById('newDiagramBtn').addEventListener('click', () => {
+      loadDiagram(initialDiagram);
+    });
+
+    document.getElementById('openBpmnBtn').addEventListener('click', () => {
+      document.getElementById('bpmnInput').click();
+    });
+
+    document.getElementById('openVisioBtn').addEventListener('click', () => {
+      document.getElementById('visioInput').click();
+    });
+
+    document.getElementById('bpmnInput').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      await loadDiagram(text);
+      event.target.value = '';
+    });
+
+    document.getElementById('visioInput').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      await loadVisio(file);
+      event.target.value = '';
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', downloadDiagram);
+
+    loadDiagram(initialDiagram);
+  </script>
+</body>
+</html>
