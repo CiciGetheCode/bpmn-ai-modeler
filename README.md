@@ -1,17 +1,13 @@
 # BPMN AI Modeler
 
-A web-based BPMN modeling tool with:
-
-- BPMN editor (bpmn-js)
-- Visio (.vsdx) file inspector
-- Integrated AI assistant (Langflow)
+A browser-based BPMN editor that supports Visio (.vsdx) inspection and AI-assisted document Q&A for workflow modeling.
 
 ## Features
 
 - Create and edit BPMN diagrams
-- Upload and inspect Visio files
+- Upload and inspect Visio (.vsdx) files
 - Download BPMN XML
-- AI chat assistant for document Q&A
+- Use an embedded AI assistant for document Q&A
 
 ## Tech Stack
 
@@ -19,7 +15,11 @@ A web-based BPMN modeling tool with:
 - bpmn-js
 - JSZip
 - Langflow embedded chat
-- Nginx (for deployment)
+- Nginx / Docker
+
+## Status
+
+In progress — functional prototype for BPMN editing, Visio inspection, and AI-assisted workflow support.
 
 ## How to Run
 
