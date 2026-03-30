@@ -275,9 +275,7 @@
       <div class="chat-card">
         <langflow-chat
           window_title="Document Q&A"
-          flow_id="yourflowidhere"
-          host_url="yourhosturlhere"
-          api_key="yourapikeyhere"
+          id="langflowChat"
           width="360"
           height="480"
           start_open="true"
@@ -291,6 +289,7 @@
   <script src="https://unpkg.com/bpmn-js@18.13.1/dist/bpmn-modeler.development.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/logspace-ai/langflow-embedded-chat@v1.0.7/dist/build/static/js/bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="./env.js"></script>
   <!-- <script src="https://cdn.jsdelivr.net/npm/fast-xml-parser@4.5.0/dist/fxp.min.js"></script> -->
 
   <script>
@@ -321,7 +320,21 @@
     const vsdxViewerEl = document.getElementById('vsdxViewer');
     const vsdxContentEl = document.getElementById('vsdxContent');
     const statusEl = document.getElementById('status');
+    const appConfig = window.APP_CONFIG || {};
+    const langflowChatEl = document.getElementById('langflowChat');
 
+    if (!appConfig.FLOW_ID || !appConfig.HOST_URL || !appConfig.LANGFLOW_API_KEY) {
+      console.warn('Missing local config in .config/env.js');
+      setTimeout(() => {
+        setStatus('Missing local config (.config/env.js)');
+      }, 0);
+    }
+
+    if (langflowChatEl) {
+      langflowChatEl.setAttribute('flow_id', appConfig.FLOW_ID || '');
+      langflowChatEl.setAttribute('host_url', appConfig.HOST_URL || '');
+      langflowChatEl.setAttribute('api_key', appConfig.LANGFLOW_API_KEY || '');
+    }
     function setStatus(message) {
       statusEl.textContent = message;
     }
