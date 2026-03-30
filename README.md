@@ -24,9 +24,9 @@ A web-based BPMN modeling tool with:
 ## How to Run
 
 ### Option 1: Open locally
-Just open `index.html` in your browser.
+Open `public/index.html` in your browser.
 
 ### Option 2: Run with Docker
 ```bash
-docker build -t bpmn-ai .
+docker build -f docker/Dockerfile -t bpmn-ai .
 docker run -p 8080:80 bpmn-ai
