@@ -1001,7 +1001,7 @@
                 "title_case": false,
                 "track_in_telemetry": false,
                 "type": "str",
-                "value": "your_api_key_here"
+                "value": ""
               },
               "base_url_ibm_watsonx": {
                 "_input_type": "DropdownInput",

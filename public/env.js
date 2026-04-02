@@ -1,5 +1,5 @@
 window.APP_CONFIG = {
-  FLOW_ID: "fba145af-342e-4bca-ba69-cda695283968",
-  HOST_URL:"https://bpmnaiagenthelper.politemoss-c1da2b8d.westeurope.azurecontainerapps.io",
-  LANGFLOW_API_KEY: "sk-rWrUB-6rrzP3M-Uae9WjwjB7CQMf9yP6NNuQuwb9XHs"
+  FLOW_ID: "6dbec275-9a07-4583-9a97-359df92f3e9f",
+  HOST_URL:"https://langflow-app.thankfulocean-ede1b294.westus2.azurecontainerapps.io",
+  LANGFLOW_API_KEY: "sk-o7r2uEWXijSj1YoBXo_w33HGT_lXB9s5Mwc6MA7q2L8"
 };
